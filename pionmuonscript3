@@ -1,0 +1,49 @@
+"""
+Unit test to ensure pions are created with the right distribution (exponential)
+Nothing decays yet.
+Source of /graphics/generating_pions.png
+
+Note this only works with earlier versions of pion.py before the revisions of 04/02/16
+"""
+
+import matplotlib.pyplot as plt
+import pion
+import properties as props
+import numpy as np
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+plt.xlabel('Distance travelled in metres before decay.')
+plt.ylabel('Number of particles.')
+plt.title('Am I making particles from sensible distributions?')
+
+def gen_coord(ind, listy):
+    for pi in listy:
+        pi.move(lab = 'False')
+        yield props.ls2m(pi.died[ind]) #Convert lab frame decay location to metres.
+
+gen = (pion.Pion(10000) for ii in range(1))
+z= np.fromiter(gen_coord(2,gen), dtype ='float64')
+
+print("mean distance travelled of 10,000MeV pions is",np.mean(z))
+print("standard deviation in distance travelled of 10,000MeV pions is",np.std(z))
+plt.hist(z,bins = 1000,histtype = 'stepfilled', color='magenta',alpha = 0.5)
+
+#del z
+#
+#jlist = []
+#for j in range(5000000):
+#    j = pion.Muon(10000)
+#    jlist.append(j)
+#
+#z2= np.fromiter(gen_coord(2,jlist), dtype ='float64')
+#del jlist
+#
+#print("mean distance travelled of 10,000MeV muons is",np.mean(z2))
+#print("standard deviation in distance travelled of 10,000MeV muons is",np.std(z2))
+#plt.hist(z2,bins=1000,histtype = 'stepfilled', color='yellow',alpha = 0.5)
+#
+#del z2
+
+plt.legend(['Pions','Muons'])
+plt.savefig('corrected pionandmuon1e72.png',format ='png')
