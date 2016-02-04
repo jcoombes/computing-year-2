@@ -3,6 +3,8 @@ Unit test to ensure pions are created with the right distribution (exponential)
 Nothing decays yet.
 
 Source of /graphics/generating_pions.png
+
+Note this script works with versions of pion.py before the 04/02/2016 changes.
 """
 
 import matplotlib.pyplot as plt
