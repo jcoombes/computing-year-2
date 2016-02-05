@@ -23,23 +23,23 @@ class Particle(object):
     
     def __init__(self, e, born, k, m, tau):
         #Make sure to encapsulate data at some point.
-        self.e = e #MeV
+        self.e = e #MeV Lab frame. #2:pf
         self.m = m #MeV
-        self.tau = tau
-        self.k = np.array(k, dtype='float64')
-        self.born = np.array(born, dtype = 'float64')
-        self.life = tau
+        self.tau = tau #Particle frame. #2:pf
+        self.k = np.array(k, dtype='float64') #Lab frame #2: pf
+        self.born = np.array(born, dtype = 'float64') #Lf #2: lf
+        self.life = tau #pf
         
-        self.g = self.e/self.m
-        self.b = np.sqrt(1-1/(self.g*self.g))
-        self.p = self.e*self.b
+        self.g = self.e/self.m #lf
+        self.b = np.sqrt(1-1/(self.g*self.g)) #lf
+        self.p = self.e*self.b # lf
         
-        self.knorm = self.k/np.sqrt(self.k.dot(self.k)) #normalised direction
-        self.pvec = self.p * self.knorm #momentum vector.
+        self.knorm = self.k/np.sqrt(self.k.dot(self.k)) #normalised direction lf
+        self.pvec = self.p * self.knorm #momentum vector. # lf
         
         self.emom = fv.FourVector(self.e, self.pvec) #energy momentum 4-vector.
         #Muon position 4-vector currently uses lifetime in own frame, position in lab frame
-        #Muon energy 4-vector currently uses energy in pion frame. Momentum in momentum/ab frame.
+        #Muon energy 4-vector currently uses energy in pion frame. Momentum in momentum/lab frame.
     
     def move(self):
         """
@@ -49,10 +49,11 @@ class Particle(object):
         Output distances in light-seconds as c=1.
         Use pion.props.ls2m() for an output in metres.  
         """
-        rest_position = fv.FourVector(self.life, self.born)
-        lab_position = rest_position.super_boost(-self.b, self.knorm)
-        #This line currently converts muon frame to some other frame. Not lab!!!
-        self.died = lab_position.r
+        self.lab_emom = self.emom.super_boost(-self.b, self.knorm)
+        self.lab_pvec = self.lab_emom.r
+        self.lab_e = self.lab_emom.ct
+        self.lab_b = self.lab_pvec/self.lab_e
+        self.died = self.born + self.lab_b * Pion.instances[-1].g * self.life
         return self.died
     
     def decay_direction(self):
@@ -82,7 +83,7 @@ class Pion(Particle):
     
     instances = []
     
-    def __init__(self, e, born = [0,0,0], k = [0,0,1], m = props.pion_mass , tau = props.pion_lifetime, branch = 0.0001):
+    def __init__(self, e, born = [0,0,0], k = [0,0,1], m = props.pion_mass , tau = props.pion_lifetime, branch = 0.1):
         super(Pion, self).__init__(e, born, k, m, tau)
         self.branch = branch #Branching Ratio. REALLY IMPORTANT.
         self.life = self.pion_lives[self.seed]
@@ -114,7 +115,7 @@ class Pion(Particle):
                     #Assumes zero neutrino mass. 
             return Muon(energy, self.died, self.decay_direction())
             
-        else:leccy
+        else:
             energy = (props.pion_mass*props.pion_mass
                     +props.electron_mass*props.electron_mass)/(2*props.pion_mass)
                     #Assumes zero neutrino mass. 
