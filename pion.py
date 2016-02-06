@@ -52,8 +52,8 @@ class Particle(object):
         self.lab_emom = self.emom.super_boost(-self.b, self.knorm)
         self.lab_pvec = self.lab_emom.r
         self.lab_e = self.lab_emom.ct
-        self.lab_b = self.lab_pvec/self.lab_e
-        self.died = self.born + self.lab_b * Pion.instances[-1].g * self.life
+        self.lab_u = self.lab_pvec/self.lab_e
+        self.died = self.born + self.lab_u * Pion.instances[-1].g * self.life
         return self.died
     
     def decay_direction(self):
@@ -69,10 +69,25 @@ class Particle(object):
         y = np.sin(theta) * np.sin(phi)
         z = np.cos(theta)
         return np.array([x,y,z])
-    """
-    def out_of_bounds(self):
-        if
-    """
+    
+    def hits_walls(self):
+        """
+        Method to determine location particle ultimately intersects detector walls.
+        Use after particle.move()
+        """
+        t1 = 0-self.born[2]/self.lab_u # z = 0
+        t2 = 100-self.born[2]/self.lab_u # z = 100
+        
+        quant = (self.born[0]*self.lab_u[0] + self.born[1]*self.lab_u[1])
+        
+        t3 = (-quant+np.sqrt(quant*quant \
+        - (self.lab_u.dot(self.lab_u)*(self.born[:2].dot(self.born[:2])-6.25))))\
+        /self.lab_u.dot(self.lab_u)
+        
+        first_intersection_time = min([t for t in [t1, t2, t3] if t>0])
+        return self.born + first_intersection_time*self.lab_u        
+        
+    
 class Pion(Particle):
     """
     It's a pion. All our particles start off as these.
@@ -122,6 +137,12 @@ class Pion(Particle):
             return Electron(energy, self.died, self.decay_direction(),parent = 'Pion')
     """
     def detect(self):
+        raise NotImplementedError
+    """
+    
+    """
+    def __repr__(self):
+        #Note that I need to use energy, self.born, self.self.hits, detected?
         raise NotImplementedError
     """
 
