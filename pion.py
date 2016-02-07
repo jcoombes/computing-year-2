@@ -46,22 +46,6 @@ class Particle(object):
         #Muon energy 4-vector currently uses energy in pion frame. Momentum in momentum/lab frame.    
         
         self.walls = None
-        
-    def move(self):
-        """
-        propagates particle for length of life in lab frame.
-        
-        This method will only work for derived classes (with defined self.life)
-        Output distances in light-seconds as c=1.
-        Use pion.props.ls2m() for an output in metres.  
-        """
-        self.lab_emom = self.emom.super_boost(-self.b, self.knorm)
-        self.lab_pvec = self.lab_emom.r
-        self.lab_e = self.lab_emom.ct
-        self.lab_u = self.lab_pvec/self.lab_e
-        self.lab_life = Pion.instances[-1].g * self.life
-        self.died = self.born + self.lab_u * self.lab_life
-        return self.died
     
     def decay_direction(self):
         """
@@ -131,7 +115,7 @@ class Pion(Particle):
     
     instances = []
     
-    def __init__(self, e, born = [0,0,0], k = [0,0,1], m = props.pion_mass , tau = props.pion_lifetime, branch = 0.0001):
+    def __init__(self, e, born = [0,0,0], k = [0,0,1], m = props.pion_mass , tau = props.pion_lifetime, branch = 0.5):
         super(Pion, self).__init__(e, born, k, m, tau)
         self.branch = branch #Branching Ratio. REALLY IMPORTANT.
         self.life = self.pion_lives[self.seed]
@@ -230,6 +214,22 @@ class Muon(Particle):
         """
         return Electron(props.michel(), self.died, self.decay_direction(), parent = 'Muon')
    
+    def move(self):
+        """
+        propagates particle for length of life in lab frame.
+        
+        This method will only work for derived classes (with defined self.life)
+        Output distances in light-seconds as c=1.
+        Use pion.props.ls2m() for an output in metres.  
+        """
+        self.lab_emom = self.emom.super_boost(-self.b, self.knorm)
+        self.lab_pvec = self.lab_emom.r
+        self.lab_e = self.lab_emom.ct
+        self.lab_u = self.lab_pvec/self.lab_e
+        self.lab_life = Pion.instances[-1].g * self.life
+        self.died = self.born + self.lab_u * self.lab_life
+        return self.died
+   
     def __str__(self):
         '''
         Returns a string representation of the particle.
@@ -266,7 +266,28 @@ class Electron(Particle):
         #Easier to have both pion and muon inherit from particle,
         #and delete tau in electron, than implement for both pion and muon.
         Electron.instances.append(self)
+    
+    def move(self):
+        """
+        propagates particle for length of life in lab frame.
         
+        This method will only work for derived classes (with defined self.life)
+        Output distances in light-seconds as c=1.
+        Use pion.props.ls2m() for an output in metres.  
+        """
+        self.lab_emom = self.emom.super_boost(-self.b, self.knorm)
+        self.lab_pvec = self.lab_emom.r
+        self.lab_e = self.lab_emom.ct
+        self.lab_u = self.lab_pvec/self.lab_e
+        if self.parent == 'Pion':
+            self.lab_life = Pion.instances[-1].g * self.life
+        elif self.parent == 'Muon':
+            self.lab_life = Muon.instances[-1].g * self.life
+        else:
+            raise ValueError, 'electron has no parents.'
+        
+        self.died = self.born + self.lab_u * self.lab_life
+        return self.died
     
     def __str__(self):
         '''
@@ -289,4 +310,4 @@ class Electron(Particle):
             ans = 'Electron({},died = {}, walls = {}, detected = {})'\
                 .format(self.e, self.died, 'None ','None')
         
-        return ans 
+        return ans
