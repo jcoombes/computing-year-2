@@ -1,0 +1,123 @@
+"""
+The main function. Use this to run any other script you like.
+"""
+from __future__ import division
+import numpy as np
+import fourvectors as fv
+import properties as props
+import pion as pi
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def simulate():
+    """
+    Find and plot where each particle decays.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    for i in range(1000):
+        mother = pi.Pion(500)
+        mother.move()
+        daughter = mother.decay()
+        daughter.move()
+        if callable(getattr(daughter,'decay',None)): #Can the daughter still decay?
+            grand = daughter.decay()
+            grand.move()
+            
+    pion_graves = [props.ls2m(i.died) for i in pi.Pion.instances]
+    xp = [ar[0] for ar in pion_graves]
+    yp = [ar[1] for ar in pion_graves]
+    zp = [ar[2] for ar in pion_graves]
+    
+    
+    muon_graves = [props.ls2m(i.died) for i in pi.Muon.instances]
+    xm = [ar[0] for ar in muon_graves]
+    ym = [ar[1] for ar in muon_graves]
+    zm = [ar[2] for ar in muon_graves]
+    
+    
+    electron_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Pion']
+    xe = [ar[0] for ar in electron_graves]
+    ye = [ar[1] for ar in electron_graves]
+    ze = [ar[2] for ar in electron_graves]
+    
+    
+    mu_e_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Muon']
+    xme = [ar[0] for ar in mu_e_graves]
+    yme = [ar[1] for ar in mu_e_graves]
+    zme = [ar[2] for ar in mu_e_graves]
+    
+    print(pion_graves[:2])
+    print(muon_graves[:2])
+    print(electron_graves[:2])
+    print(mu_e_graves[:2])
+    
+    ax.scatter(zp, yp, xp,c='purple')
+    ax.scatter(zm, ym, xm,c='orange')
+    ax.scatter(ze, ye, xe,c='red')
+    ax.scatter(zme, yme, xme, c = 'white')
+
+
+def simulate_with_walls():
+    """
+    Find and plot where each particle decays or hits chamber wall.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    for i in range(1000):
+        mother = pi.Pion(500)
+        mother.move()
+        mother.hits_walls()
+        daughter = mother.decay()
+        daughter.move()
+        if callable(getattr(daughter,'decay',None)): #Can the daughter still decay?
+            grand = daughter.decay()
+            grand.move()
+    
+    pion_graves = []
+    for part in pi.Pion.instances:
+        if hasattr(part, 'walls'):
+            pion_graves.append(props.ls2m(part.walls))
+        else:
+            pion_graves.append(props.ls2m(part.died))
+    
+    xp = [ar[0] for ar in pion_graves]
+    yp = [ar[1] for ar in pion_graves]
+    zp = [ar[2] for ar in pion_graves]
+    
+    
+    muon_graves = [props.ls2m(i.died) for i in pi.Muon.instances]
+    xm = [ar[0] for ar in muon_graves]
+    ym = [ar[1] for ar in muon_graves]
+    zm = [ar[2] for ar in muon_graves]
+    
+    
+    electron_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Pion']
+    xe = [ar[0] for ar in electron_graves]
+    ye = [ar[1] for ar in electron_graves]
+    ze = [ar[2] for ar in electron_graves]
+    
+    
+    mu_e_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Muon']
+    xme = [ar[0] for ar in mu_e_graves]
+    yme = [ar[1] for ar in mu_e_graves]
+    zme = [ar[2] for ar in mu_e_graves]
+    
+    #print(pion_graves[:2])
+    #print(muon_graves[:2])
+    #print(electron_graves[:2])
+    #print(mu_e_graves[:2])
+    
+    wall_owner = [i for i in pi.Pion.instances if hasattr(i, 'walls')]
+    others = [i for i in pi.Pion.instances if i not in wall_owner]
+    print(np.max(pion_graves))
+    print(len(wall_owner), len(others))
+
+    
+    ax.scatter(zp, yp, xp,c='purple')
+    #ax.scatter(zm, ym, xm,c='orange')
+    #ax.scatter(ze, ye, xe,c='red')
+    #ax.scatter(zme, yme, xme, c = 'white')
