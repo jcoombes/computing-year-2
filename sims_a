@@ -62,7 +62,8 @@ def simulate():
 
 def simulate_with_walls(energy,particles,save):
     """
-    Find and plot where each particle decays or hits chamber wall.
+    Where the different particles leave the detector.
+    Use for loops to plot this for a variety of energies.
     Inputs:
        Particle - int, how many particles.
        Energy - float, how much energy in MeV should the pion beam initialise with.
@@ -128,7 +129,7 @@ def simulate_with_walls(energy,particles,save):
         elif part.parent == 'Muon':
             if hasattr(part, 'walls') and part.walls is not None:
                 pass
-                #mu_e_graves.append(props.ls2m(part.walls))
+               #mu_e_graves.append(props.ls2m(part.walls))
             else:
                 mu_e_graves.append(props.ls2m(part.died))
         else:
@@ -147,11 +148,16 @@ def simulate_with_walls(energy,particles,save):
     out_m = [i for i in pi.Muon.instances if not i.inside()]
     out_ep = [i for i in pi.Electron.instances if not i.inside() and i.parent == 'Pion']
     out_em = [i for i in pi.Pion.instances if not i.inside() and i.parent == 'Muon']
+    mu_frac = (len(pi.Muon.instances)-\
+    len([i for i in pi.Electron.instances if i.parent == 'Muon']))\
+    /len(pi.Muon.instances)
     
     print('{} Pions in total, {} are out of bounds.'.format(len(pi.Pion.instances), len(out_p)))
     print('{} Muons in total, {} are out of bounds.'.format(len(pi.Muon.instances), len(out_m)))
     print('{} Pion born Electrons in total, {} are out of bounds.'.format(len([i for i in pi.Electron.instances if i.parent == 'Pion']), len(out_ep)))
     print('{} Muon born Electrons in total, {} are out of bounds.'.format(len([i for i in pi.Electron.instances if i.parent == 'Muon']), len(out_em)))
+    
+    print('the fraction of muons leaving the detector is {}'.format(mu_frac))
     
     ax.scatter(zp, yp, xp,c='brown')
     ax.scatter(zm, ym, xm,c='red')
@@ -165,5 +171,101 @@ def simulate_with_walls(energy,particles,save):
     ax.set_xlim3d(0,100)
     ax.set_ylim3d(-2.5,2.5)
     ax.set_zlim3d(-2.5,2.5)
+    
+    plt.savefig('Graphics\\'+save+'.png', bbox_inches='tight')
+
+def muon_depart(energystart, energystop, energystep, particles, save='muon leaving fraction.png'):
+    """
+    Plots the fraction of muons leaving the detector at a variety of energies.
+    Inputs:
+       Energy, start, stop, step: ints. how many energies do you want to plot.
+       Particle - int, how many particles?
+       Save - Name of saved figure.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    pi.Pion.instances = [] #Reset everything. Delete all the particles from
+    pi.Muon.instances = [] #Previous runs.
+    pi.Electron.instances = []
+    energies = list(range(energystart, energystop, energystep))
+    leaving_data = []
+    
+    for nrg in range(energystart,energystop,energystep):
+        for i in range(particles):
+            mother = pi.Pion(nrg)
+            mother.move()
+            mother.hits_walls()
+            if mother.walls is not None:
+                continue #No need to propogate further, continue to next particle.
+            daughter = mother.decay()
+            daughter.move()
+            daughter.hits_walls()
+            if daughter.walls is not None:
+                continue
+            if callable(getattr(daughter,'decay',None)): #Can the daughter still decay?
+                grand = daughter.decay()
+                grand.move()
+                grand.hits_walls()
+        
+        mu_frac = (len(pi.Muon.instances)-\
+        len([i for i in pi.Electron.instances if i.parent == 'Muon']))\
+        /len(pi.Muon.instances)
+         
+        print('the fraction of muons leaving the detector is {}'.format(mu_frac))
+        leaving_data.append(mu_frac)
+        
+    plt.title(save)
+    plt.xlabel('Energy')
+    plt.ylabel('Muon Fraction leaving detector')
+    plt.plot(energies, leaving_data)
+    plt.savefig('Graphics\\'+save+'.png', bbox_inches='tight')
+    
+def electron_momentum(energy,particles,save='electron momenta.png'):
+    """
+    All the momentum components for electrons from pion and muon decays.
+     Inputs:
+       Particle - int, how many particles.
+       Energy - float, how much energy in MeV should the pion beam initialise with.
+       Save - Name of figure
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    pi.Pion.instances = [] #Reset everything. Delete all the particles from
+    pi.Muon.instances = [] #Previous runs.
+    pi.Electron.instances = []
+    
+    for i in range(particles):
+        mother = pi.Pion(energy)
+        mother.move()
+        mother.hits_walls()
+        if mother.walls is not None:
+            continue #No need to propogate further, continue to next particle.
+        daughter = mother.decay()
+        daughter.move()
+        daughter.hits_walls()
+        if daughter.walls is not None:
+            continue
+        if callable(getattr(daughter,'decay',None)): #Can the daughter still decay?
+            grand = daughter.decay()
+            grand.move()
+            grand.hits_walls()
+    
+    
+    location = [i.born for i in pi.Electron.instances]
+    momenta = [i.lab_pvec for i in pi.Electron.instances]
+    
+    xx = [ar[0] for ar in location]
+    yy = [ar[1] for ar in location]
+    zz = [ar[2] for ar in location]
+    
+    pe_x = [ar[0] for ar in momenta]
+    pe_y = [ar[1] for ar in momenta]
+    pe_z = [ar[2] for ar in momenta]
+   
+    ax.quiver(xx,yy,zz,pe_x,pe_y,pe_z,length = 0.1)
+    
+    plt.title(save)
+    plt.xlabel('X-axis (lightseconds)')
+    plt.ylabel('Y-axis')
     
     plt.savefig('Graphics\\'+save+'.png', bbox_inches='tight')
