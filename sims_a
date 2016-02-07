@@ -60,27 +60,41 @@ def simulate():
     ax.scatter(zme, yme, xme, c = 'white')
 
 
-def simulate_with_walls():
+def simulate_with_walls(energy,particles,save):
     """
     Find and plot where each particle decays or hits chamber wall.
+    Inputs:
+       Particle - int, how many particles.
+       Energy - float, how much energy in MeV should the pion beam initialise with.
+       Save - Name of figure
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    pi.Pion.instances = [] #Reset everything. Delete all the particles from
+    pi.Muon.instances = [] #Previous runs.
+    pi.Electron.instances = []
     
-    for i in range(1000):
-        mother = pi.Pion(500)
+    for i in range(particles):
+        mother = pi.Pion(energy)
         mother.move()
         mother.hits_walls()
+        if mother.walls is not None:
+            continue #No need to propogate further, continue to next particle.
         daughter = mother.decay()
         daughter.move()
+        daughter.hits_walls()
+        if daughter.walls is not None:
+            continue
         if callable(getattr(daughter,'decay',None)): #Can the daughter still decay?
             grand = daughter.decay()
             grand.move()
+            grand.hits_walls()
     
     pion_graves = []
     for part in pi.Pion.instances:
-        if hasattr(part, 'walls'):
-            pion_graves.append(props.ls2m(part.walls))
+        if hasattr(part, 'walls') and part.walls is not None:
+            pass
+            #pion_graves.append(props.ls2m(part.walls))
         else:
             pion_graves.append(props.ls2m(part.died))
     
@@ -89,35 +103,67 @@ def simulate_with_walls():
     zp = [ar[2] for ar in pion_graves]
     
     
-    muon_graves = [props.ls2m(i.died) for i in pi.Muon.instances]
+    muon_graves = []
+    for part in pi.Muon.instances:
+        if hasattr(part, 'walls') and part.walls is not None:
+            pass
+            #muon_graves.append(props.ls2m(part.walls))
+        else:
+            muon_graves.append(props.ls2m(part.died))
+    
     xm = [ar[0] for ar in muon_graves]
     ym = [ar[1] for ar in muon_graves]
     zm = [ar[2] for ar in muon_graves]
     
+    electron_graves = []
+    mu_e_graves = []
+    for part in pi.Electron.instances:
+        if part.parent == 'Pion':
+            if hasattr(part, 'walls') and part.walls is not None:
+                pass
+                #electron_graves.append(props.ls2m(part.walls))
+            else:
+                electron_graves.append(props.ls2m(part.died))
+        
+        elif part.parent == 'Muon':
+            if hasattr(part, 'walls') and part.walls is not None:
+                pass
+                #mu_e_graves.append(props.ls2m(part.walls))
+            else:
+                mu_e_graves.append(props.ls2m(part.died))
+        else:
+            print('How did you get here?: electron parent is {}'.format(part.parent))
+            
     
-    electron_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Pion']
     xe = [ar[0] for ar in electron_graves]
     ye = [ar[1] for ar in electron_graves]
     ze = [ar[2] for ar in electron_graves]
     
-    
-    mu_e_graves = [props.ls2m(i.died) for i in pi.Electron.instances if i.parent == 'Muon']
     xme = [ar[0] for ar in mu_e_graves]
     yme = [ar[1] for ar in mu_e_graves]
     zme = [ar[2] for ar in mu_e_graves]
     
-    #print(pion_graves[:2])
-    #print(muon_graves[:2])
-    #print(electron_graves[:2])
-    #print(mu_e_graves[:2])
+    out_p = [i for i in pi.Pion.instances if not i.inside()]
+    out_m = [i for i in pi.Muon.instances if not i.inside()]
+    out_ep = [i for i in pi.Electron.instances if not i.inside() and i.parent == 'Pion']
+    out_em = [i for i in pi.Pion.instances if not i.inside() and i.parent == 'Muon']
     
-    wall_owner = [i for i in pi.Pion.instances if hasattr(i, 'walls')]
-    others = [i for i in pi.Pion.instances if i not in wall_owner]
-    print(np.max(pion_graves))
-    print(len(wall_owner), len(others))
-
+    print('{} Pions in total, {} are out of bounds.'.format(len(pi.Pion.instances), len(out_p)))
+    print('{} Muons in total, {} are out of bounds.'.format(len(pi.Muon.instances), len(out_m)))
+    print('{} Pion born Electrons in total, {} are out of bounds.'.format(len([i for i in pi.Electron.instances if i.parent == 'Pion']), len(out_ep)))
+    print('{} Muon born Electrons in total, {} are out of bounds.'.format(len([i for i in pi.Electron.instances if i.parent == 'Muon']), len(out_em)))
     
-    ax.scatter(zp, yp, xp,c='purple')
-    #ax.scatter(zm, ym, xm,c='orange')
-    #ax.scatter(ze, ye, xe,c='red')
-    #ax.scatter(zme, yme, xme, c = 'white')
+    ax.scatter(zp, yp, xp,c='brown')
+    ax.scatter(zm, ym, xm,c='red')
+    ax.scatter(ze, ye, xe,c='gold')
+    ax.scatter(zme, yme, xme, c = 'white')
+    
+    plt.title(save)
+    plt.legend(['pion','muon','pi electron', 'mu electron'])
+    plt.xlabel('Z-axis (lightseconds)')
+    plt.ylabel('Y-axis')
+    ax.set_xlim3d(0,100)
+    ax.set_ylim3d(-2.5,2.5)
+    ax.set_zlim3d(-2.5,2.5)
+    
+    plt.savefig('Graphics\\'+save+'.png', bbox_inches='tight')
